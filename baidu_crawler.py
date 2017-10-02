@@ -1,16 +1,14 @@
 # -*- coding:utf-8 -*-
-import sys
 import requests
 from lxml import etree
 import random
 import ip_pool
 
-reload(sys)
-sys.setdefaultencoding('utf-8')
-
 """
 ================================================
  Extract text from the result of BaiDu search
+
+ For Python 3.6+
 ================================================
 """
 
@@ -21,11 +19,11 @@ def download_html(keywords, proxy):
     """
     # 抓取参数 https://www.baidu.com/s?wd=testRequest
     key = {'wd': keywords}
-    
+
     # 请求Header
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0 cb) like Gecko'}
 
-    proxy = {'http': 'http://'+proxy}
+    proxy = {'http': 'http://' + proxy}
 
     # 抓取数据内容
     web_content = requests.get("https://www.baidu.com/s?", params=key, headers=headers, proxies=proxy, timeout=4)
@@ -75,36 +73,44 @@ def extract_all_text(keyword_dict, keyword_text, ip_factory):
         # 获取代理IP数据
         for ip in ip_factory.get_proxies():
             useful_proxies[ip] = 0
-        print "总共：" + str(len(useful_proxies)) + 'IP可用'
+        print("总共：" + str(len(useful_proxies)) + 'IP可用')
     except OSError:
-        print "获取代理ip时出错！"
+        print("获取代理ip时出错！")
 
-    cn = open(keyword_dict, 'r')
-    with open(keyword_text, 'w') as ct:
+    cn = open(keyword_dict, 'r', encoding='utf8')
+    with open(keyword_text, 'w', encoding='utf8') as ct:
+        a = 0
         # 逐行读取关键词
         for line in cn:
             # 设置随机代理
-            proxy = random.choice(useful_proxies.keys())
-            print "change proxies: " + proxy
+            # proxy = random.choice(list(useful_proxies.keys()))
+            # print("change proxies: " + proxy)
 
-            content = ''
-            try:
-                content = download_html(line.strip(), proxy)
-            except OSError:
-                # 超过3次则删除此proxy
-                useful_proxies[proxy] += 1
-                if useful_proxies[proxy] > 3:
-                    useful_proxies.remove(proxy)
-                # 再抓一次
-                proxy = random.choice(useful_proxies.keys())
-                content = download_html(line.strip(), proxy)
 
-            raw_text = html_parser(content)
-            raw_text = raw_text.replace('\n', '||')
-            print raw_text
+            # 每个代理搞10000次
 
-            # 写入数据到文件
-            ct.write(line.strip()+':\t'+raw_text+'\n')
+            for proxy in list(useful_proxies.keys()):
+                for i in range(1000):
+                    content = ''
+                    try:
+                        content = download_html(line.strip(), proxy)
+                    except OSError:
+                        # 超过3次则删除此proxy
+                        useful_proxies[proxy] += 1
+                        if useful_proxies[proxy]>3:
+                            useful_proxies.remove(proxy)
+                        # 再抓一次
+                        proxy = random.choice(useful_proxies.keys())
+                        content = download_html(line.strip(), proxy)
+
+                    raw_text = html_parser(content)
+                    raw_text = raw_text.replace('\n', '||')
+                    print(str(a) + "  " + raw_text)
+                    a = a + 1
+
+
+                # # 写入数据到文件
+                # ct.write(line.strip() + ':\t' + raw_text + '\n')
 
         ct.close()
         cn.close()
@@ -118,6 +124,7 @@ def main():
 
     # 抓取数据
     extract_all_text(keyword_dict, keyword_text, ip_pool.ip_factory)
+
 
 if __name__ == '__main__':
     main()
